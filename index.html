@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#a9cfb0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="服薬管理">
+    <title>服薬管理</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell" aria-label="服薬管理アプリ">
+      <header class="top-bar">
+        <button class="icon-button" id="connectionButton" type="button" aria-label="接続設定">☰</button>
+        <div>
+          <p class="eyebrow" id="profileLabel">服薬管理</p>
+          <h1>服薬管理</h1>
+        </div>
+        <button class="icon-button" id="refreshButton" aria-label="更新">↻</button>
+      </header>
+
+      <button class="sync-status" id="syncStatus" type="button" data-state="local">この端末内に保存</button>
+
+      <nav class="view-tabs" aria-label="服薬管理タブ">
+        <button class="view-tab active" type="button" data-view="recordView">記録</button>
+        <button class="view-tab" type="button" data-view="medicineView">薬リスト</button>
+      </nav>
+
+      <section class="app-view active" id="recordView" aria-label="服薬を記録">
+        <section class="today-panel">
+          <div class="date-row">
+            <div>
+              <p class="label">服薬日時</p>
+              <p class="date-value" id="dateValue">2026/06/28 14:40</p>
+            </div>
+            <button class="small-button" id="nowButton" type="button">現在時刻</button>
+          </div>
+
+          <div class="field-group">
+            <p class="label">区分</p>
+            <div class="segment-grid" role="group" aria-label="服薬区分">
+              <button class="segment selected" type="button" data-period="朝">
+                <span class="segment-icon">☀</span>
+                朝
+              </button>
+              <button class="segment" type="button" data-period="昼">
+                <span class="segment-icon">○</span>
+                昼
+              </button>
+              <button class="segment" type="button" data-period="夜">
+                <span class="segment-icon">☾</span>
+                夜
+              </button>
+              <button class="segment" type="button" data-period="寝る前">
+                <span class="segment-icon">☆</span>
+                寝る前
+              </button>
+              <button class="segment segment-wide" type="button" data-period="必要時">
+                <span class="segment-icon">＋</span>
+                必要時
+              </button>
+            </div>
+          </div>
+
+          <button class="save-button" id="saveButton" type="button">記録する</button>
+        </section>
+
+        <section class="history-section" aria-label="最近の記録">
+          <div class="section-title-row">
+            <h2>最近の記録</h2>
+          </div>
+          <div class="history-list" id="historyList"></div>
+        </section>
+      </section>
+
+      <section class="app-view" id="medicineView" aria-label="薬リスト">
+        <section class="today-panel">
+          <div class="section-title-row">
+            <div>
+              <p class="label">処方が変わった時だけ編集</p>
+              <h2>薬リスト</h2>
+            </div>
+            <span class="count-pill" id="masterCount">0件</span>
+          </div>
+
+          <form class="master-form" id="medicineForm">
+            <label>
+              <span class="label">薬の名前</span>
+              <input class="text-input" id="medicineNameInput" type="text" placeholder="例：ロキソニン" autocomplete="off">
+            </label>
+            <label>
+              <span class="label">主に飲むタイミング</span>
+              <select class="text-input" id="medicineTimingInput">
+                <option value="朝">朝</option>
+                <option value="昼">昼</option>
+                <option value="夜">夜</option>
+                <option value="寝る前">寝る前</option>
+                <option value="必要時">必要時</option>
+              </select>
+            </label>
+            <button class="save-button compact" type="submit">薬を追加する</button>
+          </form>
+        </section>
+
+        <section class="history-section">
+          <div class="section-title-row">
+            <h2>登録中の薬</h2>
+          </div>
+          <div class="master-list" id="medicineMasterList"></div>
+        </section>
+      </section>
+    </main>
+
+    <dialog class="connection-dialog" id="connectionDialog">
+      <form class="connection-form" id="connectionForm" method="dialog">
+        <div class="dialog-title-row">
+          <div>
+            <p class="label">この端末の保存先</p>
+            <h2>スプレッドシート接続</h2>
+          </div>
+          <button class="icon-button" id="closeConnectionButton" type="button" aria-label="閉じる">×</button>
+        </div>
+
+        <label>
+          <span class="label">Apps ScriptのURL</span>
+          <input class="text-input" id="endpointInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="url">
+        </label>
+        <label>
+          <span class="label">接続キー</span>
+          <input class="text-input" id="accessKeyInput" type="password" autocomplete="off">
+        </label>
+
+        <p class="form-message" id="connectionMessage" aria-live="polite"></p>
+        <button class="save-button compact" type="submit">接続して保存</button>
+        <button class="disconnect-button" id="disconnectButton" type="button">接続を解除</button>
+      </form>
+    </dialog>
+
+    <script src="script.js"></script>
+  </body>
+</html>

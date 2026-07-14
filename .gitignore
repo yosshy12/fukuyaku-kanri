@@ -1,0 +1,4 @@
+.codex-remote-attachments/
+.agents/
+server.err.log
+server.out.log
