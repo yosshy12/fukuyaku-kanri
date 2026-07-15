@@ -28,6 +28,7 @@
 
       <nav class="view-tabs" aria-label="服薬管理タブ">
         <button class="view-tab active" type="button" data-view="recordView">記録</button>
+        <button class="view-tab" type="button" data-view="asNeededView">頓服</button>
         <button class="view-tab" type="button" data-view="medicineView">薬リスト</button>
       </nav>
 
@@ -60,10 +61,6 @@
                 <span class="segment-icon">☆</span>
                 寝る前
               </button>
-              <button class="segment segment-wide" type="button" data-period="必要時">
-                <span class="segment-icon">＋</span>
-                必要時
-              </button>
             </div>
           </div>
 
@@ -75,6 +72,33 @@
             <h2>最近の記録</h2>
           </div>
           <div class="history-list" id="historyList"></div>
+        </section>
+      </section>
+
+      <section class="app-view" id="asNeededView" aria-label="頓服を記録">
+        <section class="today-panel">
+          <div class="date-row">
+            <div>
+              <p class="label">服薬日時</p>
+              <p class="date-value" id="asNeededDateValue">2026/06/28 14:40</p>
+            </div>
+            <button class="small-button" id="asNeededNowButton" type="button">現在時刻</button>
+          </div>
+
+          <div class="field-group">
+            <p class="label">飲んだ頓服薬</p>
+            <div class="medicine-list" id="asNeededMedicineList" role="group" aria-label="飲んだ頓服薬を1つ選択"></div>
+          </div>
+
+          <p class="form-message" id="asNeededMessage" aria-live="polite"></p>
+          <button class="save-button" id="asNeededSaveButton" type="button" disabled>頓服を記録する</button>
+        </section>
+
+        <section class="history-section" aria-label="最近の頓服記録">
+          <div class="section-title-row">
+            <h2>最近の頓服記録</h2>
+          </div>
+          <div class="history-list" id="asNeededHistoryList"></div>
         </section>
       </section>
 

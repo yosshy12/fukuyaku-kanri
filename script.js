@@ -5,6 +5,12 @@ const connectionButton = document.querySelector("#connectionButton");
 const periodButtons = document.querySelectorAll(".segment");
 const saveButton = document.querySelector("#saveButton");
 const historyList = document.querySelector("#historyList");
+const asNeededDateValue = document.querySelector("#asNeededDateValue");
+const asNeededNowButton = document.querySelector("#asNeededNowButton");
+const asNeededMedicineList = document.querySelector("#asNeededMedicineList");
+const asNeededSaveButton = document.querySelector("#asNeededSaveButton");
+const asNeededMessage = document.querySelector("#asNeededMessage");
+const asNeededHistoryList = document.querySelector("#asNeededHistoryList");
 const viewTabs = document.querySelectorAll(".view-tab");
 const appViews = document.querySelectorAll(".app-view");
 const medicineForm = document.querySelector("#medicineForm");
@@ -27,6 +33,7 @@ const MEDICINE_KEY = "medicationApp.medicines.v2";
 const HISTORY_KEY = "medicationApp.history.v2";
 
 let selectedPeriod = "朝";
+let selectedAsNeededMedicineId = null;
 let connection = loadJson(CONNECTION_KEY, null);
 let medicines = loadJson(MEDICINE_KEY, []);
 let history = loadJson(HISTORY_KEY, []);
@@ -104,6 +111,76 @@ function renderMedicineMaster() {
   });
 }
 
+function renderAsNeededMedicines() {
+  const availableMedicines = medicines.filter((medicine) => medicine.timing === "必要時");
+  const selectionExists = availableMedicines.some(
+    (medicine) => medicine.id === selectedAsNeededMedicineId,
+  );
+
+  if (!selectionExists) selectedAsNeededMedicineId = null;
+  asNeededMedicineList.innerHTML = "";
+
+  if (!availableMedicines.length) {
+    asNeededMedicineList.innerHTML = '<p class="empty-note">薬リストで「必要時」の薬を登録してください</p>';
+    asNeededSaveButton.disabled = true;
+    return;
+  }
+
+  availableMedicines.forEach((medicine) => {
+    const selected = medicine.id === selectedAsNeededMedicineId;
+    const button = document.createElement("button");
+    button.className = `medicine-item${selected ? " selected" : ""}`;
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(selected));
+    button.innerHTML = `
+      <span class="checkmark" aria-hidden="true">✓</span>
+      <span>
+        <strong>${escapeHtml(medicine.name)}</strong>
+        <small>頓服薬</small>
+      </span>
+    `;
+    button.addEventListener("click", () => {
+      selectedAsNeededMedicineId = medicine.id;
+      asNeededMessage.textContent = "";
+      renderAsNeededMedicines();
+    });
+    asNeededMedicineList.append(button);
+  });
+
+  asNeededSaveButton.disabled = !selectedAsNeededMedicineId;
+}
+
+function renderAsNeededHistory() {
+  const records = history
+    .filter((record) => record.period === "必要時")
+    .slice(0, 20);
+  asNeededHistoryList.innerHTML = "";
+
+  if (!records.length) {
+    asNeededHistoryList.innerHTML = '<p class="empty-note neutral">まだ頓服の記録はありません</p>';
+    return;
+  }
+
+  records.forEach((record) => {
+    const medicinesText = record.medicines
+      ? `<small class="history-medicines">${escapeHtml(record.medicines)}</small>`
+      : "";
+    const card = document.createElement("article");
+    card.className = "history-card";
+    card.innerHTML = `
+      <div class="history-main">
+        <span class="period-badge as-needed">頓服</span>
+        <div>
+          <time>${escapeHtml(record.date)}</time>
+          <p>頓服を記録</p>
+          ${medicinesText}
+        </div>
+      </div>
+    `;
+    asNeededHistoryList.append(card);
+  });
+}
+
 function renderHistory() {
   historyList.innerHTML = "";
 
@@ -112,7 +189,7 @@ function renderHistory() {
     return;
   }
 
-  history.forEach((record) => {
+  history.slice(0, 20).forEach((record) => {
     const period = escapeHtml(record.period);
     const date = escapeHtml(record.date);
     const medicinesText = record.medicines
@@ -191,14 +268,18 @@ function applyRemoteData(data) {
   history = Array.isArray(data.history) ? data.history : [];
   profileLabel.textContent = data.profile || "服薬管理";
   renderMedicineMaster();
+  renderAsNeededMedicines();
   renderHistory();
+  renderAsNeededHistory();
   setSyncStatus("スプレッドシートと同期済み", "synced");
 }
 
 async function syncFromRemote() {
   if (!connection) {
     renderMedicineMaster();
+    renderAsNeededMedicines();
     renderHistory();
+    renderAsNeededHistory();
     profileLabel.textContent = "服薬管理";
     setSyncStatus("この端末内に保存", "local");
     return;
@@ -229,6 +310,7 @@ async function deactivateMedicine(medicine) {
   medicines = medicines.filter((current) => current.id !== medicine.id);
   saveJson(MEDICINE_KEY, medicines);
   renderMedicineMaster();
+  renderAsNeededMedicines();
 }
 
 function openConnectionDialog() {
@@ -241,6 +323,10 @@ function openConnectionDialog() {
 
 nowButton.addEventListener("click", () => {
   dateValue.textContent = formatDate(new Date());
+});
+
+asNeededNowButton.addEventListener("click", () => {
+  asNeededDateValue.textContent = formatDate(new Date());
 });
 
 refreshButton.addEventListener("click", () => {
@@ -260,7 +346,13 @@ periodButtons.forEach((button) => {
 });
 
 viewTabs.forEach((tab) => {
-  tab.addEventListener("click", () => switchView(tab.dataset.view));
+  tab.addEventListener("click", () => {
+    if (tab.dataset.view === "asNeededView") {
+      asNeededDateValue.textContent = formatDate(new Date());
+      renderAsNeededMedicines();
+    }
+    switchView(tab.dataset.view);
+  });
 });
 
 connectionForm.addEventListener("submit", async (event) => {
@@ -291,12 +383,15 @@ disconnectButton.addEventListener("click", () => {
   medicines = loadJson(MEDICINE_KEY, []);
   history = loadJson(HISTORY_KEY, []);
   renderMedicineMaster();
+  renderAsNeededMedicines();
   renderHistory();
+  renderAsNeededHistory();
 });
 
 medicineForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = medicineNameInput.value.trim();
+  const timing = medicineTimingInput.value;
   if (!name) {
     medicineNameInput.focus();
     return;
@@ -306,19 +401,20 @@ medicineForm.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   try {
     if (connection) {
-      await postRemote("addMedicine", { name, timing: medicineTimingInput.value });
+      await postRemote("addMedicine", { name, timing });
     } else {
       medicines.push({
         id: `medicine-${Date.now()}`,
         name,
-        timing: medicineTimingInput.value,
+        timing,
       });
       saveJson(MEDICINE_KEY, medicines);
       renderMedicineMaster();
+      renderAsNeededMedicines();
     }
     medicineForm.reset();
     medicineTimingInput.value = "朝";
-    switchView("recordView");
+    switchView(timing === "必要時" ? "asNeededView" : "recordView");
   } catch {
     setSyncStatus("薬を追加できませんでした", "error");
   } finally {
@@ -345,9 +441,10 @@ saveButton.addEventListener("click", async () => {
         period: selectedPeriod,
         medicines: medicineNames,
       });
-      history = history.slice(0, 20);
+      history = history.slice(0, 100);
       saveJson(HISTORY_KEY, history);
       renderHistory();
+      renderAsNeededHistory();
     }
     saveButton.textContent = "記録しました";
   } catch {
@@ -361,9 +458,58 @@ saveButton.addEventListener("click", async () => {
   }
 });
 
+asNeededSaveButton.addEventListener("click", async () => {
+  const medicine = medicines.find(
+    (item) => item.id === selectedAsNeededMedicineId && item.timing === "必要時",
+  );
+
+  if (!medicine) {
+    asNeededMessage.textContent = "飲んだ頓服薬を1つ選んでください";
+    renderAsNeededMedicines();
+    return;
+  }
+
+  asNeededSaveButton.disabled = true;
+  asNeededMessage.textContent = "";
+  try {
+    if (connection) {
+      await postRemote("addRecord", {
+        date: asNeededDateValue.textContent,
+        period: "必要時",
+        medicineId: medicine.id,
+      });
+    } else {
+      history.unshift({
+        id: `history-${Date.now()}`,
+        date: asNeededDateValue.textContent,
+        period: "必要時",
+        medicines: medicine.name,
+      });
+      history = history.slice(0, 100);
+      saveJson(HISTORY_KEY, history);
+      renderHistory();
+      renderAsNeededHistory();
+    }
+    selectedAsNeededMedicineId = null;
+    asNeededSaveButton.textContent = "記録しました";
+    renderAsNeededMedicines();
+  } catch {
+    asNeededMessage.textContent = "頓服を記録できませんでした";
+    setSyncStatus("記録を保存できませんでした", "error");
+  } finally {
+    window.setTimeout(() => {
+      asNeededSaveButton.textContent = "頓服を記録する";
+      renderAsNeededMedicines();
+    }, 1200);
+  }
+});
+
 dateValue.textContent = formatDate(new Date());
+asNeededDateValue.textContent = formatDate(new Date());
 renderMedicineMaster();
+renderAsNeededMedicines();
 renderHistory();
+renderAsNeededHistory();
 syncFromRemote().catch(() => {});
 
 if ("serviceWorker" in navigator && window.location.protocol !== "file:") {

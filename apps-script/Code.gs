@@ -79,7 +79,7 @@ function bootstrap_() {
     history = recordRows
       .filter(function (row) { return row[0]; })
       .sort(function (a, b) { return dateTime_(b[1]) - dateTime_(a[1]); })
-      .slice(0, 20)
+      .slice(0, 100)
       .map(function (row) {
         return {
           id: String(row[0]),
@@ -101,15 +101,27 @@ function bootstrap_() {
 function addRecord_(parameters) {
   var period = validatePeriod_(parameters.period);
   var medicationDate = parseLocalDate_(parameters.date);
+  var selectedMedicineId = String(parameters.medicineId || "");
   var medicineSheet = requiredSheet_(MEDICINE_SHEET);
   var names = [];
 
   var medicineRows = dataRows_(medicineSheet, 8);
   if (medicineRows.length) {
-    names = medicineRows
-      .filter(function (row) { return row[0] && row[2] === period && row[3] === true; })
-      .sort(function (a, b) { return (Number(a[4]) || 0) - (Number(b[4]) || 0); })
-      .map(function (row) { return String(row[1]); });
+    if (period === "必要時" && selectedMedicineId) {
+      names = medicineRows
+        .filter(function (row) {
+          return String(row[0]) === selectedMedicineId && row[2] === period && row[3] === true;
+        })
+        .map(function (row) { return String(row[1]); });
+    } else {
+      names = medicineRows
+        .filter(function (row) { return row[0] && row[2] === period && row[3] === true; })
+        .sort(function (a, b) { return (Number(a[4]) || 0) - (Number(b[4]) || 0); })
+        .map(function (row) { return String(row[1]); });
+    }
+  }
+  if (period === "必要時" && selectedMedicineId && !names.length) {
+    throw new Error("選択した頓服薬が見つかりません");
   }
 
   var id = Utilities.getUuid();
