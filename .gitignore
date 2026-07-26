@@ -1,4 +1,6 @@
 .codex-remote-attachments/
 .agents/
+.clasprc.json
+client_secret*.json
 server.err.log
 server.out.log
