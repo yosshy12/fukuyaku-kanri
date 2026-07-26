@@ -28,10 +28,17 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Assemble site
+        shell: bash
+        run: |
+          mkdir _site
+          cp index.html styles.css script.js manifest.webmanifest service-worker.js .nojekyll _site/
+          cp -R icons _site/
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
 
       - name: Deploy
         id: deployment
