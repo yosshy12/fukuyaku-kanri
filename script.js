@@ -1,11 +1,11 @@
-const dateValue = document.querySelector("#dateValue");
+const dateInput = document.querySelector("#dateInput");
 const nowButton = document.querySelector("#nowButton");
 const refreshButton = document.querySelector("#refreshButton");
 const connectionButton = document.querySelector("#connectionButton");
 const periodButtons = document.querySelectorAll(".segment");
 const saveButton = document.querySelector("#saveButton");
 const historyList = document.querySelector("#historyList");
-const asNeededDateValue = document.querySelector("#asNeededDateValue");
+const asNeededDateInput = document.querySelector("#asNeededDateInput");
 const asNeededNowButton = document.querySelector("#asNeededNowButton");
 const asNeededMedicineList = document.querySelector("#asNeededMedicineList");
 const asNeededSaveButton = document.querySelector("#asNeededSaveButton");
@@ -60,13 +60,29 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function formatDate(date) {
+
+function formatDateInputValue(date) {
   const pad = (value) => String(value).padStart(2, "0");
-  return [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join("/")
-    + " "
+  return [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join("-")
+    + "T"
     + [pad(date.getHours()), pad(date.getMinutes())].join(":");
 }
 
+function setCurrentDateTime(input) {
+  input.value = formatDateInputValue(new Date());
+  input.removeAttribute("aria-invalid");
+}
+
+function medicationDateFromInput(input) {
+  const match = input.value.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2})$/);
+  if (!match) {
+    input.setAttribute("aria-invalid", "true");
+    input.focus();
+    return null;
+  }
+  input.removeAttribute("aria-invalid");
+  return `${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]}`;
+}
 function badgeClass(period) {
   if (period === "朝") return "morning";
   if (period === "昼") return "noon";
@@ -322,11 +338,11 @@ function openConnectionDialog() {
 }
 
 nowButton.addEventListener("click", () => {
-  dateValue.textContent = formatDate(new Date());
+  setCurrentDateTime(dateInput);
 });
 
 asNeededNowButton.addEventListener("click", () => {
-  asNeededDateValue.textContent = formatDate(new Date());
+  setCurrentDateTime(asNeededDateInput);
 });
 
 refreshButton.addEventListener("click", () => {
@@ -348,7 +364,7 @@ periodButtons.forEach((button) => {
 viewTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     if (tab.dataset.view === "asNeededView") {
-      asNeededDateValue.textContent = formatDate(new Date());
+      setCurrentDateTime(asNeededDateInput);
       renderAsNeededMedicines();
     }
     switchView(tab.dataset.view);
@@ -423,11 +439,13 @@ medicineForm.addEventListener("submit", async (event) => {
 });
 
 saveButton.addEventListener("click", async () => {
+  const medicationDate = medicationDateFromInput(dateInput);
+  if (!medicationDate) return;
   saveButton.disabled = true;
   try {
     if (connection) {
       await postRemote("addRecord", {
-        date: dateValue.textContent,
+        date: medicationDate,
         period: selectedPeriod,
       });
     } else {
@@ -437,7 +455,7 @@ saveButton.addEventListener("click", async () => {
         .join("、");
       history.unshift({
         id: `history-${Date.now()}`,
-        date: dateValue.textContent,
+        date: medicationDate,
         period: selectedPeriod,
         medicines: medicineNames,
       });
@@ -447,6 +465,7 @@ saveButton.addEventListener("click", async () => {
       renderAsNeededHistory();
     }
     saveButton.textContent = "記録しました";
+    setCurrentDateTime(dateInput);
   } catch {
     saveButton.textContent = "記録できませんでした";
     setSyncStatus("記録を保存できませんでした", "error");
@@ -459,6 +478,8 @@ saveButton.addEventListener("click", async () => {
 });
 
 asNeededSaveButton.addEventListener("click", async () => {
+  const medicationDate = medicationDateFromInput(asNeededDateInput);
+  if (!medicationDate) return;
   const medicine = medicines.find(
     (item) => item.id === selectedAsNeededMedicineId && item.timing === "必要時",
   );
@@ -474,14 +495,14 @@ asNeededSaveButton.addEventListener("click", async () => {
   try {
     if (connection) {
       await postRemote("addRecord", {
-        date: asNeededDateValue.textContent,
+        date: medicationDate,
         period: "必要時",
         medicineId: medicine.id,
       });
     } else {
       history.unshift({
         id: `history-${Date.now()}`,
-        date: asNeededDateValue.textContent,
+        date: medicationDate,
         period: "必要時",
         medicines: medicine.name,
       });
@@ -492,6 +513,7 @@ asNeededSaveButton.addEventListener("click", async () => {
     }
     selectedAsNeededMedicineId = null;
     asNeededSaveButton.textContent = "記録しました";
+    setCurrentDateTime(asNeededDateInput);
     renderAsNeededMedicines();
   } catch {
     asNeededMessage.textContent = "頓服を記録できませんでした";
@@ -504,8 +526,8 @@ asNeededSaveButton.addEventListener("click", async () => {
   }
 });
 
-dateValue.textContent = formatDate(new Date());
-asNeededDateValue.textContent = formatDate(new Date());
+setCurrentDateTime(dateInput);
+setCurrentDateTime(asNeededDateInput);
 renderMedicineMaster();
 renderAsNeededMedicines();
 renderHistory();

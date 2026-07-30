@@ -35,9 +35,9 @@
       <section class="app-view active" id="recordView" aria-label="服薬を記録">
         <section class="today-panel">
           <div class="date-row">
-            <div>
-              <p class="label">服薬日時</p>
-              <p class="date-value" id="dateValue">2026/06/28 14:40</p>
+            <div class="date-field">
+              <label class="label" for="dateInput">服薬日時</label>
+              <input class="date-input" id="dateInput" type="datetime-local" step="60" required>
             </div>
             <button class="small-button" id="nowButton" type="button">現在時刻</button>
           </div>
@@ -78,9 +78,9 @@
       <section class="app-view" id="asNeededView" aria-label="頓服を記録">
         <section class="today-panel">
           <div class="date-row">
-            <div>
-              <p class="label">服薬日時</p>
-              <p class="date-value" id="asNeededDateValue">2026/06/28 14:40</p>
+            <div class="date-field">
+              <label class="label" for="asNeededDateInput">服薬日時</label>
+              <input class="date-input" id="asNeededDateInput" type="datetime-local" step="60" required>
             </div>
             <button class="small-button" id="asNeededNowButton" type="button">現在時刻</button>
           </div>

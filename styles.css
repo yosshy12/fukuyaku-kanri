@@ -190,10 +190,31 @@ h2 {
   gap: 12px;
 }
 
-.date-value {
-  margin: 6px 0 0;
-  font-size: 1.18rem;
+.date-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.date-input {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 1rem;
   font-weight: 800;
+}
+
+.date-input:focus {
+  border-color: var(--primary);
+  outline: 3px solid var(--primary-soft);
+}
+
+.date-input[aria-invalid="true"] {
+  border-color: #b85c5c;
 }
 
 .small-button,
@@ -565,6 +586,17 @@ button.medicine-item {
   font-weight: 800;
 }
 
+@media (max-width: 360px) {
+  .date-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .date-row .small-button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
 @media (min-width: 760px) {
   body {
     display: grid;
