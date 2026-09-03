@@ -64,7 +64,7 @@ function Prepare-GitRepository {
   Invoke-Git config user.name "yosshy12"
   Invoke-Git config user.email "129061116+yosshy12@users.noreply.github.com"
   Invoke-Git config credential.helper manager
-  Invoke-Git config http.sslBackend schannel
+  Invoke-Git config http.sslBackend openssl
 
   $remotes = & $script:gitExe "--git-dir=$repoMeta" "--work-tree=$root" remote
   if ($LASTEXITCODE -ne 0) {
@@ -183,4 +183,3 @@ try {
 }
 
 exit $exitCode
-

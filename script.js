@@ -31,12 +31,17 @@ const disconnectButton = document.querySelector("#disconnectButton");
 const CONNECTION_KEY = "medicationApp.connection.v1";
 const MEDICINE_KEY = "medicationApp.medicines.v2";
 const HISTORY_KEY = "medicationApp.history.v2";
+const PENDING_RECORDS_KEY = "medicationApp.pendingRecords.v1";
+const PROFILE_KEY = "medicationApp.profile.v1";
+const CACHE_READY_KEY = "medicationApp.remoteCacheReady.v1";
 
 let selectedPeriod = "朝";
 let selectedAsNeededMedicineId = null;
 let connection = loadJson(CONNECTION_KEY, null);
 let medicines = loadJson(MEDICINE_KEY, []);
 let history = loadJson(HISTORY_KEY, []);
+let pendingRecords = loadJson(PENDING_RECORDS_KEY, []);
+let syncInProgress = false;
 
 function loadJson(key, fallback) {
   try {
@@ -83,6 +88,42 @@ function medicationDateFromInput(input) {
   input.removeAttribute("aria-invalid");
   return `${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]}`;
 }
+
+function automaticPeriodFor(date) {
+  const hour = date.getHours();
+  if (hour < 5) return "寝る前";
+  if (hour < 12) return "朝";
+  if (hour < 17) return "昼";
+  return "夜";
+}
+
+function selectPeriod(period) {
+  selectedPeriod = period;
+  periodButtons.forEach((button) => {
+    const selected = button.dataset.period === period;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
+
+function refreshOpenDefaults() {
+  const now = new Date();
+  dateInput.value = formatDateInputValue(now);
+  asNeededDateInput.value = formatDateInputValue(now);
+  dateInput.removeAttribute("aria-invalid");
+  asNeededDateInput.removeAttribute("aria-invalid");
+  selectPeriod(automaticPeriodFor(now));
+}
+
+function createRecordId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `record-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function sortHistory(records) {
+  return records.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+}
+
 function badgeClass(period) {
   if (period === "朝") return "morning";
   if (period === "昼") return "noon";
@@ -236,7 +277,7 @@ function normalizeEndpoint(value) {
   return url.toString();
 }
 
-function requestBootstrap(targetConnection = connection) {
+function requestBootstrap(targetConnection = connection, recordIds = []) {
   if (!targetConnection) return Promise.reject(new Error("未接続です"));
 
   return new Promise((resolve, reject) => {
@@ -262,6 +303,7 @@ function requestBootstrap(targetConnection = connection) {
     url.searchParams.set("action", "bootstrap");
     url.searchParams.set("key", targetConnection.key);
     url.searchParams.set("callback", callbackName);
+    if (recordIds.length) url.searchParams.set("recordIds", recordIds.join(","));
     url.searchParams.set("_", Date.now());
     script.src = url.toString();
     document.head.append(script);
@@ -279,15 +321,106 @@ async function postRemote(action, payload = {}) {
   return syncFromRemote();
 }
 
+async function postRemoteWithoutRefresh(action, payload = {}) {
+  const body = new URLSearchParams({ action, key: connection.key, ...payload });
+  await fetch(connection.endpoint, {
+    method: "POST",
+    mode: "no-cors",
+    body,
+  });
+}
+
+function savePendingRecords() {
+  saveJson(PENDING_RECORDS_KEY, pendingRecords);
+}
+
+function mergeRemoteHistory(remoteHistory) {
+  const recordsById = new Map();
+  remoteHistory.forEach((record) => recordsById.set(record.id, record));
+  pendingRecords.forEach(({ record }) => {
+    if (!recordsById.has(record.id)) recordsById.set(record.id, record);
+  });
+  return sortHistory(Array.from(recordsById.values())).slice(0, 100);
+}
+
+function updateQueueStatus() {
+  if (!connection) {
+    setSyncStatus("この端末内に保存", "local");
+  } else if (pendingRecords.length) {
+    setSyncStatus(`${pendingRecords.length}件を同期待ち`, "loading");
+  } else {
+    setSyncStatus("スプレッドシートと同期済み", "synced");
+  }
+}
+
+function saveRecordLocally(record, payload) {
+  history = sortHistory([
+    record,
+    ...history.filter((current) => current.id !== record.id),
+  ]).slice(0, 100);
+  saveJson(HISTORY_KEY, history);
+
+  pendingRecords.push({ id: record.id, record, payload });
+  savePendingRecords();
+  renderHistory();
+  renderAsNeededHistory();
+  updateQueueStatus();
+}
+
+async function flushPendingRecords() {
+  if (!connection || !pendingRecords.length || syncInProgress) {
+    updateQueueStatus();
+    return;
+  }
+
+  syncInProgress = true;
+  const batch = pendingRecords.slice(0, 10);
+  let madeProgress = false;
+  setSyncStatus(`${batch.length}件を同期中`, "loading");
+
+  try {
+    for (const item of batch) {
+      await postRemoteWithoutRefresh("addRecord", item.payload);
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 600));
+    const data = await requestBootstrap(connection, batch.map((item) => item.id));
+    const remoteIds = new Set(data.history.map((record) => record.id));
+    const confirmedIds = new Set(
+      batch.filter((item) => remoteIds.has(item.id)).map((item) => item.id),
+    );
+
+    if (!confirmedIds.size) throw new Error("記録の反映を確認できませんでした");
+
+    madeProgress = true;
+    pendingRecords = pendingRecords.filter((item) => !confirmedIds.has(item.id));
+    savePendingRecords();
+    applyRemoteData(data);
+  } catch {
+    setSyncStatus(`${pendingRecords.length}件を同期待ち`, "error");
+  } finally {
+    syncInProgress = false;
+    if (connection && pendingRecords.length && madeProgress) {
+      window.setTimeout(() => flushPendingRecords(), 300);
+    }
+  }
+}
+
 function applyRemoteData(data) {
   medicines = Array.isArray(data.medicines) ? data.medicines : [];
-  history = Array.isArray(data.history) ? data.history : [];
-  profileLabel.textContent = data.profile || "服薬管理";
+  const remoteHistory = Array.isArray(data.history) ? data.history : [];
+  history = mergeRemoteHistory(remoteHistory);
+  const profile = data.profile || "服薬管理";
+  profileLabel.textContent = profile;
+  saveJson(MEDICINE_KEY, medicines);
+  saveJson(HISTORY_KEY, history);
+  saveJson(PROFILE_KEY, profile);
+  saveJson(CACHE_READY_KEY, true);
   renderMedicineMaster();
   renderAsNeededMedicines();
   renderHistory();
   renderAsNeededHistory();
-  setSyncStatus("スプレッドシートと同期済み", "synced");
+  updateQueueStatus();
 }
 
 async function syncFromRemote() {
@@ -305,7 +438,10 @@ async function syncFromRemote() {
   try {
     applyRemoteData(await requestBootstrap());
   } catch (error) {
-    setSyncStatus("同期できません", "error");
+    setSyncStatus(
+      pendingRecords.length ? `${pendingRecords.length}件を同期待ち` : "同期できません",
+      "error",
+    );
     throw error;
   }
 }
@@ -338,14 +474,18 @@ function openConnectionDialog() {
 }
 
 nowButton.addEventListener("click", () => {
-  setCurrentDateTime(dateInput);
+  const now = new Date();
+  dateInput.value = formatDateInputValue(now);
+  dateInput.removeAttribute("aria-invalid");
+  selectPeriod(automaticPeriodFor(now));
 });
 
 asNeededNowButton.addEventListener("click", () => {
   setCurrentDateTime(asNeededDateInput);
 });
 
-refreshButton.addEventListener("click", () => {
+refreshButton.addEventListener("click", async () => {
+  await flushPendingRecords();
   syncFromRemote().catch(() => {});
 });
 
@@ -355,9 +495,7 @@ closeConnectionButton.addEventListener("click", () => connectionDialog.close());
 
 periodButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    selectedPeriod = button.dataset.period;
-    periodButtons.forEach((item) => item.classList.remove("selected"));
-    button.classList.add("selected");
+    selectPeriod(button.dataset.period);
   });
 });
 
@@ -385,6 +523,7 @@ connectionForm.addEventListener("submit", async (event) => {
     saveJson(CONNECTION_KEY, connection);
     applyRemoteData(data);
     connectionDialog.close();
+    flushPendingRecords();
   } catch (error) {
     connectionMessage.textContent = error.message;
   }
@@ -393,6 +532,7 @@ connectionForm.addEventListener("submit", async (event) => {
 disconnectButton.addEventListener("click", () => {
   connection = null;
   localStorage.removeItem(CONNECTION_KEY);
+  localStorage.removeItem(CACHE_READY_KEY);
   profileLabel.textContent = "服薬管理";
   setSyncStatus("この端末内に保存", "local");
   connectionDialog.close();
@@ -438,46 +578,30 @@ medicineForm.addEventListener("submit", async (event) => {
   }
 });
 
-saveButton.addEventListener("click", async () => {
+saveButton.addEventListener("click", () => {
   const medicationDate = medicationDateFromInput(dateInput);
   if (!medicationDate) return;
-  saveButton.disabled = true;
-  try {
-    if (connection) {
-      await postRemote("addRecord", {
-        date: medicationDate,
-        period: selectedPeriod,
-      });
-    } else {
-      const medicineNames = medicines
-        .filter((medicine) => medicine.timing === selectedPeriod)
-        .map((medicine) => medicine.name)
-        .join("、");
-      history.unshift({
-        id: `history-${Date.now()}`,
-        date: medicationDate,
-        period: selectedPeriod,
-        medicines: medicineNames,
-      });
-      history = history.slice(0, 100);
-      saveJson(HISTORY_KEY, history);
-      renderHistory();
-      renderAsNeededHistory();
-    }
-    saveButton.textContent = "記録しました";
-    setCurrentDateTime(dateInput);
-  } catch {
-    saveButton.textContent = "記録できませんでした";
-    setSyncStatus("記録を保存できませんでした", "error");
-  } finally {
-    window.setTimeout(() => {
-      saveButton.textContent = "記録する";
-      saveButton.disabled = false;
-    }, 1200);
-  }
+  const id = createRecordId();
+  const registeredAt = formatDateInputValue(new Date()).replace("T", " ").replaceAll("-", "/");
+  const medicineNames = medicines
+    .filter((medicine) => medicine.timing === selectedPeriod)
+    .map((medicine) => medicine.name)
+    .join("、");
+
+  saveRecordLocally(
+    { id, date: medicationDate, period: selectedPeriod, medicines: medicineNames },
+    { id, date: medicationDate, registeredAt, period: selectedPeriod },
+  );
+
+  saveButton.textContent = "端末に記録しました";
+  refreshOpenDefaults();
+  window.setTimeout(() => {
+    saveButton.textContent = "記録する";
+  }, 1200);
+  flushPendingRecords();
 });
 
-asNeededSaveButton.addEventListener("click", async () => {
+asNeededSaveButton.addEventListener("click", () => {
   const medicationDate = medicationDateFromInput(asNeededDateInput);
   if (!medicationDate) return;
   const medicine = medicines.find(
@@ -490,49 +614,61 @@ asNeededSaveButton.addEventListener("click", async () => {
     return;
   }
 
-  asNeededSaveButton.disabled = true;
   asNeededMessage.textContent = "";
-  try {
-    if (connection) {
-      await postRemote("addRecord", {
-        date: medicationDate,
-        period: "必要時",
-        medicineId: medicine.id,
-      });
-    } else {
-      history.unshift({
-        id: `history-${Date.now()}`,
-        date: medicationDate,
-        period: "必要時",
-        medicines: medicine.name,
-      });
-      history = history.slice(0, 100);
-      saveJson(HISTORY_KEY, history);
-      renderHistory();
-      renderAsNeededHistory();
-    }
-    selectedAsNeededMedicineId = null;
-    asNeededSaveButton.textContent = "記録しました";
-    setCurrentDateTime(asNeededDateInput);
+  const id = createRecordId();
+  const registeredAt = formatDateInputValue(new Date()).replace("T", " ").replaceAll("-", "/");
+
+  saveRecordLocally(
+    { id, date: medicationDate, period: "必要時", medicines: medicine.name },
+    {
+      id,
+      date: medicationDate,
+      registeredAt,
+      period: "必要時",
+      medicineId: medicine.id,
+    },
+  );
+
+  selectedAsNeededMedicineId = null;
+  asNeededSaveButton.textContent = "端末に記録しました";
+  setCurrentDateTime(asNeededDateInput);
+  renderAsNeededMedicines();
+  window.setTimeout(() => {
+    asNeededSaveButton.textContent = "頓服を記録する";
     renderAsNeededMedicines();
-  } catch {
-    asNeededMessage.textContent = "頓服を記録できませんでした";
-    setSyncStatus("記録を保存できませんでした", "error");
-  } finally {
-    window.setTimeout(() => {
-      asNeededSaveButton.textContent = "頓服を記録する";
-      renderAsNeededMedicines();
-    }, 1200);
-  }
+  }, 1200);
+  flushPendingRecords();
 });
 
-setCurrentDateTime(dateInput);
-setCurrentDateTime(asNeededDateInput);
+if (!Array.isArray(pendingRecords)) pendingRecords = [];
+profileLabel.textContent = loadJson(PROFILE_KEY, "服薬管理");
+refreshOpenDefaults();
 renderMedicineMaster();
 renderAsNeededMedicines();
 renderHistory();
 renderAsNeededHistory();
-syncFromRemote().catch(() => {});
+updateQueueStatus();
+if (connection && !loadJson(CACHE_READY_KEY, false)) {
+  window.setTimeout(() => {
+    syncFromRemote().then(() => flushPendingRecords()).catch(() => {});
+  }, 0);
+} else {
+  window.setTimeout(() => flushPendingRecords(), 0);
+}
+
+window.addEventListener("pageshow", () => {
+  refreshOpenDefaults();
+  flushPendingRecords();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    refreshOpenDefaults();
+    flushPendingRecords();
+  }
+});
+
+window.addEventListener("online", () => flushPendingRecords());
 
 if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
   window.addEventListener("load", () => {

@@ -19,7 +19,7 @@ function doGet(e) {
     if ((e.parameter.action || "bootstrap") !== "bootstrap") {
       throw new Error("未対応の操作です");
     }
-    return output_(bootstrap_(), e.parameter.callback);
+    return output_(bootstrap_(e.parameter.recordIds), e.parameter.callback);
   } catch (error) {
     return output_({ ok: false, message: error.message }, e && e.parameter && e.parameter.callback);
   }
@@ -52,7 +52,7 @@ function authenticate_(e) {
   if (!e || !e.parameter || e.parameter.key !== savedKey) throw new Error("接続キーが正しくありません");
 }
 
-function bootstrap_() {
+function bootstrap_(requestedRecordIdsValue) {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   var medicineSheet = requiredSheet_(MEDICINE_SHEET);
   var recordSheet = requiredSheet_(RECORD_SHEET);
@@ -76,18 +76,33 @@ function bootstrap_() {
 
   var recordRows = dataRows_(recordSheet, 6);
   if (recordRows.length) {
-    history = recordRows
+    var historyEntries = recordRows
       .filter(function (row) { return row[0]; })
-      .sort(function (a, b) { return dateTime_(b[1]) - dateTime_(a[1]); })
-      .slice(0, 100)
       .map(function (row) {
         return {
           id: String(row[0]),
           date: formatDate_(row[1], "yyyy/MM/dd HH:mm"),
           period: String(row[2]),
-          medicines: String(row[3] || "")
+          medicines: String(row[3] || ""),
+          sortTime: dateTime_(row[1])
         };
-      });
+      })
+      .sort(function (a, b) { return b.sortTime - a.sortTime; });
+
+    history = historyEntries.slice(0, 100);
+    var requestedIds = String(requestedRecordIdsValue || "")
+      .split(",")
+      .filter(function (id) { return id; })
+      .slice(0, 10);
+    var includedIds = {};
+    history.forEach(function (record) { includedIds[record.id] = true; });
+    historyEntries.forEach(function (record) {
+      if (requestedIds.indexOf(record.id) !== -1 && !includedIds[record.id]) {
+        history.push(record);
+        includedIds[record.id] = true;
+      }
+    });
+    history.forEach(function (record) { delete record.sortTime; });
   }
 
   return {
@@ -99,8 +114,23 @@ function bootstrap_() {
 }
 
 function addRecord_(parameters) {
+  var id = String(parameters.id || "").trim() || Utilities.getUuid();
+  if (id.length > 100 || !/^[0-9A-Za-z_-]+$/.test(id)) {
+    throw new Error("記録IDが正しくありません");
+  }
+
+  var recordSheet = requiredSheet_(RECORD_SHEET);
+  var existingRows = dataRows_(recordSheet, 1);
+  var alreadySaved = existingRows.some(function (row) {
+    return String(row[0]) === id;
+  });
+  if (alreadySaved) return id;
+
   var period = validatePeriod_(parameters.period);
   var medicationDate = parseLocalDate_(parameters.date);
+  var registeredDate = parameters.registeredAt
+    ? parseLocalDate_(parameters.registeredAt)
+    : new Date();
   var selectedMedicineId = String(parameters.medicineId || "");
   var medicineSheet = requiredSheet_(MEDICINE_SHEET);
   var names = [];
@@ -124,13 +154,12 @@ function addRecord_(parameters) {
     throw new Error("選択した頓服薬が見つかりません");
   }
 
-  var id = Utilities.getUuid();
-  requiredSheet_(RECORD_SHEET).appendRow([
+  recordSheet.appendRow([
     id,
     medicationDate,
     period,
     names.join("、"),
-    new Date(),
+    registeredDate,
     ""
   ]);
   SpreadsheetApp.flush();
