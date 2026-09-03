@@ -135,7 +135,31 @@ function Publish-GitHub {
     Write-Host "GitHub already has the current files."
   }
 
-  Invoke-Git push -u origin main
+  $token = & $script:ghExe auth token
+  if ($LASTEXITCODE -ne 0 -or -not $token) {
+    throw "GitHub CLI is not signed in."
+  }
+
+  $basicCredential = [Convert]::ToBase64String(
+    [Text.Encoding]::UTF8.GetBytes("x-access-token:$token")
+  )
+  try {
+    Invoke-External -Executable $script:gitExe -Arguments @(
+      "-c",
+      "http.sslBackend=openssl",
+      "-c",
+      "http.extraHeader=Authorization: Basic $basicCredential",
+      "--git-dir=$repoMeta",
+      "--work-tree=$root",
+      "push",
+      "-u",
+      "origin",
+      "main"
+    )
+  } finally {
+    $token = $null
+    $basicCredential = $null
+  }
 }
 
 try {
@@ -147,6 +171,9 @@ try {
   )
   $script:claspExe = Resolve-Executable -CommandName "clasp.cmd" -Candidates @(
     (Join-Path $env:APPDATA "npm\clasp.cmd")
+  )
+  $script:ghExe = Resolve-Executable -CommandName "gh.exe" -Candidates @(
+    "C:\Program Files\GitHub CLI\gh.exe"
   )
 
   Prepare-GitRepository
