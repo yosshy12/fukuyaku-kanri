@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/green_pale">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+            <Button android:id="@+id/backButton" android:layout_width="48dp" android:layout_height="48dp" android:contentDescription="戻る" android:text="‹" android:textSize="28sp" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:layout_weight="1" android:text="バックアップ設定" android:textColor="@color/ink" android:textSize="24sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:background="@drawable/panel_background" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Google Drive" android:textColor="@color/ink" android:textSize="20sp" android:textStyle="bold" />
+            <TextView android:id="@+id/driveConnectionStatus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="未接続" android:textColor="@color/muted" />
+            <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="保存先フォルダ名">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/folderNameInput" android:layout_width="match_parent" android:layout_height="wrap_content" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/connectDriveButton" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:text="Google Driveに接続" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/backupNowButton" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="8dp" android:text="今すぐバックアップ" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/restoreButton" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="8dp" android:text="最新のSQLiteから復元" />
+            <TextView android:id="@+id/backupStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@color/green_soft" android:padding="12dp" android:text="最終バックアップ：未実行" android:textColor="@color/ink" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="通信可能になると、SQLiteと確認用CSVを同じフォルダへ自動保存します。" android:textColor="@color/muted" android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:background="@drawable/panel_background" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="スプレッドシートから取り込む" android:textColor="@color/ink" android:textSize="20sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="既存データの初回移行に使用します。取り込み後の正式な保存先は端末内SQLiteです。" android:textColor="@color/muted" android:textSize="13sp" />
+            <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Apps ScriptのURL">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/endpointInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textUri" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:hint="接続キー" app:endIconMode="password_toggle">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/accessKeyInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textPassword" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/importButton" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:text="既存データを取り込む" />
+            <TextView android:id="@+id/importStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/muted" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

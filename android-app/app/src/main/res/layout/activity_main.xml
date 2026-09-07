@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/green_pale"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="18dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="10dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="服薬管理"
+                android:textColor="@color/muted"
+                android:textSize="12sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="今日のお薬"
+                android:textColor="@color/ink"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/settingsButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/settings"
+            android:text="⚙"
+            android:textSize="22sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/backupSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:background="@color/green_soft"
+        android:gravity="center"
+        android:padding="9dp"
+        android:text="端末内のSQLiteに保存"
+        android:textColor="@color/ink"
+        android:textSize="13sp" />
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/viewTabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="12dp"
+        app:checkedButton="@id/recordTab"
+        app:selectionRequired="true"
+        app:singleSelection="true">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/recordTab"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="記録" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/asNeededTab"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="頓服" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/medicineTab"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="薬リスト" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:id="@+id/recordView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/panel_background"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="服薬日時" android:textColor="@color/muted" />
+                    <Button android:id="@+id/recordDateButton" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="6dp" android:textAllCaps="false" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="区分" android:textColor="@color/muted" />
+                    <RadioGroup android:id="@+id/periodGroup" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <RadioButton android:id="@+id/morningButton" android:layout_width="match_parent" android:layout_height="52dp" android:text="朝" />
+                        <RadioButton android:id="@+id/noonButton" android:layout_width="match_parent" android:layout_height="52dp" android:text="昼" />
+                        <RadioButton android:id="@+id/nightButton" android:layout_width="match_parent" android:layout_height="52dp" android:text="夜" />
+                        <RadioButton android:id="@+id/sleepButton" android:layout_width="match_parent" android:layout_height="52dp" android:text="寝る前" />
+                    </RadioGroup>
+                    <com.google.android.material.button.MaterialButton android:id="@+id/saveRecordButton" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="12dp" android:text="記録する" />
+                </LinearLayout>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="最近の記録" android:textColor="@color/ink" android:textSize="20sp" android:textStyle="bold" />
+                <LinearLayout android:id="@+id/recordHistory" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="vertical" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/asNeededView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/panel_background" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="服薬日時" android:textColor="@color/muted" />
+                    <Button android:id="@+id/asNeededDateButton" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="6dp" android:textAllCaps="false" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="飲んだ頓服薬" android:textColor="@color/muted" />
+                    <RadioGroup android:id="@+id/asNeededMedicineGroup" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/saveAsNeededButton" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="12dp" android:enabled="false" android:text="頓服を記録する" />
+                </LinearLayout>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="最近の頓服記録" android:textColor="@color/ink" android:textSize="20sp" android:textStyle="bold" />
+                <LinearLayout android:id="@+id/asNeededHistory" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="vertical" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/medicineView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/panel_background" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="処方が変わった時だけ編集" android:textColor="@color/muted" />
+                    <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="薬の名前">
+                        <com.google.android.material.textfield.TextInputEditText android:id="@+id/medicineNameInput" android:layout_width="match_parent" android:layout_height="wrap_content" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                    <Spinner android:id="@+id/medicineTimingSpinner" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="8dp" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/addMedicineButton" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="8dp" android:text="薬を追加する" />
+                </LinearLayout>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="登録中の薬" android:textColor="@color/ink" android:textSize="20sp" android:textStyle="bold" />
+                <LinearLayout android:id="@+id/medicineList" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="vertical" />
+            </LinearLayout>
+        </FrameLayout>
+    </ScrollView>
+</LinearLayout>

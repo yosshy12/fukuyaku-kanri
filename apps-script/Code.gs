@@ -19,7 +19,7 @@ function doGet(e) {
     if ((e.parameter.action || "bootstrap") !== "bootstrap") {
       throw new Error("未対応の操作です");
     }
-    return output_(bootstrap_(e.parameter.recordIds), e.parameter.callback);
+    return output_(bootstrap_(e.parameter.recordIds, e.parameter.includeAll === "1"), e.parameter.callback);
   } catch (error) {
     return output_({ ok: false, message: error.message }, e && e.parameter && e.parameter.callback);
   }
@@ -52,7 +52,7 @@ function authenticate_(e) {
   if (!e || !e.parameter || e.parameter.key !== savedKey) throw new Error("接続キーが正しくありません");
 }
 
-function bootstrap_(requestedRecordIdsValue) {
+function bootstrap_(requestedRecordIdsValue, includeAll) {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   var medicineSheet = requiredSheet_(MEDICINE_SHEET);
   var recordSheet = requiredSheet_(RECORD_SHEET);
@@ -68,7 +68,9 @@ function bootstrap_(requestedRecordIdsValue) {
           id: String(row[0]),
           name: String(row[1]),
           timing: String(row[2]),
-          sortOrder: Number(row[4]) || 0
+          sortOrder: Number(row[4]) || 0,
+          createdAt: dateTime_(row[5]),
+          updatedAt: dateTime_(row[6]) || dateTime_(row[5])
         };
       })
       .sort(function (a, b) { return a.sortOrder - b.sortOrder; });
@@ -84,12 +86,14 @@ function bootstrap_(requestedRecordIdsValue) {
           date: formatDate_(row[1], "yyyy/MM/dd HH:mm"),
           period: String(row[2]),
           medicines: String(row[3] || ""),
+          createdAt: dateTime_(row[4]),
+          updatedAt: dateTime_(row[4]),
           sortTime: dateTime_(row[1])
         };
       })
       .sort(function (a, b) { return b.sortTime - a.sortTime; });
 
-    history = historyEntries.slice(0, 100);
+    history = includeAll ? historyEntries : historyEntries.slice(0, 100);
     var requestedIds = String(requestedRecordIdsValue || "")
       .split(",")
       .filter(function (id) { return id; })
