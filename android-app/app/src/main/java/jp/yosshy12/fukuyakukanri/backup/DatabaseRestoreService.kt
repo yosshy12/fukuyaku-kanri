@@ -6,7 +6,9 @@ import android.database.sqlite.SQLiteDatabase
 import jp.yosshy12.fukuyakukanri.data.AppDatabase
 import jp.yosshy12.fukuyakukanri.data.MedicationEntity
 import jp.yosshy12.fukuyakukanri.data.MedicationRecordEntity
+import jp.yosshy12.fukuyakukanri.data.MedicationRepository
 import jp.yosshy12.fukuyakukanri.data.SyncState
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 
 data class RestoreResult(val medicines: Int, val records: Int)
@@ -14,7 +16,8 @@ data class RestoreResult(val medicines: Int, val records: Int)
 class DatabaseRestoreService(private val context: Context) {
     private val database = AppDatabase.get(context)
 
-    suspend fun restoreLatest(accessToken: String, folderName: String): RestoreResult {
+    suspend fun restoreLatest(accessToken: String, folderName: String): RestoreResult =
+        MedicationRepository.databaseMutex.withLock {
         val downloaded = File(context.cacheDir, "restore-${System.currentTimeMillis()}.sqlite3")
         try {
             val found = DriveApiClient(accessToken).downloadLatestDatabase(folderName, downloaded)
@@ -37,9 +40,17 @@ class DatabaseRestoreService(private val context: Context) {
             val records = db.query("medication_records", null, null, null, null, null, null).use { cursor ->
                 buildList { while (cursor.moveToNext()) add(cursor.toRecord()) }
             }
-            database.medicationDao().upsertAll(medicines)
-            database.recordDao().upsertAll(records)
-            return RestoreResult(medicines.size, records.size)
+            val currentMedicines = database.medicationDao().allIncludingDeleted().associateBy { it.id }
+            val currentRecords = database.recordDao().allIncludingDeleted().associateBy { it.id }
+            val newerMedicines = medicines.filter { restored ->
+                restored.updatedAt > (currentMedicines[restored.id]?.updatedAt ?: Long.MIN_VALUE)
+            }
+            val newerRecords = records.filter { restored ->
+                restored.updatedAt > (currentRecords[restored.id]?.updatedAt ?: Long.MIN_VALUE)
+            }
+            database.medicationDao().upsertAll(newerMedicines)
+            database.recordDao().upsertAll(newerRecords)
+            return RestoreResult(newerMedicines.size, newerRecords.size)
         }
     }
 

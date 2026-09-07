@@ -74,9 +74,17 @@ class SpreadsheetImporter(private val database: AppDatabase) {
                 }
             }
         }
-        database.medicationDao().upsertAll(importedMedicines)
-        database.recordDao().upsertAll(importedRecords)
-        return ImportResult(importedMedicines.size, importedRecords.size)
+        val currentMedicines = database.medicationDao().allIncludingDeleted().associateBy { it.id }
+        val currentRecords = database.recordDao().allIncludingDeleted().associateBy { it.id }
+        val newerMedicines = importedMedicines.filter { imported ->
+            imported.updatedAt > (currentMedicines[imported.id]?.updatedAt ?: Long.MIN_VALUE)
+        }
+        val newerRecords = importedRecords.filter { imported ->
+            imported.updatedAt > (currentRecords[imported.id]?.updatedAt ?: Long.MIN_VALUE)
+        }
+        database.medicationDao().upsertAll(newerMedicines)
+        database.recordDao().upsertAll(newerRecords)
+        return ImportResult(newerMedicines.size, newerRecords.size)
     }
 
     private fun uuidFor(type: String, original: String): String =
