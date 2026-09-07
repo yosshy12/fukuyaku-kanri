@@ -4,3 +4,6 @@
 client_secret*.json
 server.err.log
 server.out.log
+android-app/.gradle/
+android-app/app/build/
+android-app/build-output/
