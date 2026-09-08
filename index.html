@@ -71,6 +71,10 @@
           <div class="section-title-row">
             <h2>最近の記録</h2>
           </div>
+          <label class="search-field">
+            <span class="visually-hidden">記録を検索</span>
+            <input class="text-input" id="recordSearchInput" type="search" placeholder="日時・区分・薬名で検索">
+          </label>
           <div class="history-list" id="historyList"></div>
         </section>
       </section>
@@ -144,8 +148,8 @@
       <form class="connection-form" id="connectionForm" method="dialog">
         <div class="dialog-title-row">
           <div>
-            <p class="label">この端末の保存先</p>
-            <h2>スプレッドシート接続</h2>
+            <p class="label">この端末の同期先</p>
+            <h2>スプレッドシート同期</h2>
           </div>
           <button class="icon-button" id="closeConnectionButton" type="button" aria-label="閉じる">×</button>
         </div>
@@ -160,11 +164,63 @@
         </label>
 
         <p class="form-message" id="connectionMessage" aria-live="polite"></p>
-        <button class="save-button compact" type="submit">接続して保存</button>
+        <button class="save-button compact" type="submit">接続を確認</button>
+        <button class="small-button full-width" id="syncNowButton" type="button">今すぐ同期</button>
         <button class="disconnect-button" id="disconnectButton" type="button">接続を解除</button>
       </form>
     </dialog>
 
+    <dialog class="connection-dialog" id="recordEditDialog">
+      <form class="connection-form" id="recordEditForm" method="dialog">
+        <div class="dialog-title-row">
+          <h2>記録を編集</h2>
+          <button class="icon-button" id="closeRecordEditButton" type="button" aria-label="閉じる">×</button>
+        </div>
+        <label>
+          <span class="label">服薬日時</span>
+          <input class="date-input" id="recordEditDateInput" type="datetime-local" step="60" required>
+        </label>
+        <label>
+          <span class="label">区分</span>
+          <select class="text-input" id="recordEditPeriodInput">
+            <option value="朝">朝</option>
+            <option value="昼">昼</option>
+            <option value="夜">夜</option>
+            <option value="寝る前">寝る前</option>
+            <option value="必要時">必要時</option>
+          </select>
+        </label>
+        <button class="save-button compact" type="submit">変更を保存</button>
+        <button class="disconnect-button" id="deleteRecordButton" type="button">この記録を削除</button>
+      </form>
+    </dialog>
+
+    <dialog class="connection-dialog" id="medicineEditDialog">
+      <form class="connection-form" id="medicineEditForm" method="dialog">
+        <div class="dialog-title-row">
+          <h2>薬を編集</h2>
+          <button class="icon-button" id="closeMedicineEditButton" type="button" aria-label="閉じる">×</button>
+        </div>
+        <label>
+          <span class="label">薬の名前</span>
+          <input class="text-input" id="medicineEditNameInput" type="text" required>
+        </label>
+        <label>
+          <span class="label">主に飲むタイミング</span>
+          <select class="text-input" id="medicineEditTimingInput">
+            <option value="朝">朝</option>
+            <option value="昼">昼</option>
+            <option value="夜">夜</option>
+            <option value="寝る前">寝る前</option>
+            <option value="必要時">必要時</option>
+          </select>
+        </label>
+        <button class="save-button compact" type="submit">変更を保存</button>
+        <button class="disconnect-button" id="deleteMedicineButton" type="button">この薬を使用終了</button>
+      </form>
+    </dialog>
+
+    <script src="indexed-db.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

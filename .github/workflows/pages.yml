@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           mkdir _site
-          cp index.html styles.css script.js manifest.webmanifest service-worker.js .nojekyll _site/
+          cp index.html styles.css indexed-db.js script.js manifest.webmanifest service-worker.js .nojekyll _site/
           cp -R icons _site/
 
       - name: Upload site

@@ -1,8 +1,9 @@
-const CACHE_NAME = "medication-manager-v5";
+const CACHE_NAME = "medication-manager-v6";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
+  "./indexed-db.js",
   "./script.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",

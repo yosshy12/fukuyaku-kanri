@@ -4,6 +4,7 @@
 client_secret*.json
 server.err.log
 server.out.log
+.test-artifacts/
 android-app/.gradle/
 android-app/app/build/
 android-app/build-output/
