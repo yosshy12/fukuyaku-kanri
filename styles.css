@@ -664,11 +664,47 @@ button.medicine-item {
   }
 
   .app-shell {
+    width: min(100%, 1040px);
     min-height: calc(100vh - 56px);
+    padding: 0 24px 40px;
     border: 1px solid var(--line);
     border-radius: 8px;
     box-shadow: 0 24px 58px rgba(69, 92, 70, 0.14);
     overflow: hidden;
   }
 
+  .top-bar {
+    margin: 0 -24px;
+    padding-inline: 22px;
+  }
+
+  .app-view.active {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.88fr) minmax(380px, 1.12fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .app-view .history-section {
+    margin-top: 16px;
+  }
+
+  .history-list,
+  .master-list {
+    max-height: calc(100vh - 250px);
+    overflow: auto;
+    padding-right: 4px;
+  }
+
+}
+
+@media (min-width: 760px) and (max-width: 880px) {
+  .app-view.active {
+    grid-template-columns: 1fr;
+  }
+
+  .history-list,
+  .master-list {
+    max-height: none;
+  }
 }
