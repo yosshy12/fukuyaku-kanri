@@ -209,13 +209,23 @@ function renderMedicineMaster() {
     const item = document.createElement("article");
     item.className = "master-card";
     item.innerHTML = `
+      ${validMedicinePhoto(medicine.photo)
+        ? `<button class="medicine-photo" type="button" aria-label="${escapeHtml(medicine.name)}の写真を拡大" title="写真を拡大"><img src="${medicine.photo}" alt="${escapeHtml(medicine.name)}の写真" loading="lazy"></button>`
+        : '<span class="medicine-photo photo-placeholder">写真なし</span>'}
       <div>
         <strong>${escapeHtml(medicine.name)}</strong>
         <small>${escapeHtml(medicine.timing)}${medicine.syncStatus === "pending" ? "・未同期" : ""}</small>
       </div>
       <button class="delete-button" type="button" aria-label="${escapeHtml(medicine.name)}を編集">編集</button>
     `;
-    item.querySelector("button").addEventListener("click", () => openMedicineEdit(medicine.id));
+    item.querySelector(".delete-button").addEventListener("click", () => openMedicineEdit(medicine.id));
+    item.querySelector("button.medicine-photo")?.addEventListener("click", () => {
+      document.querySelector("#photoDialogTitle").textContent = medicine.name;
+      const image = document.querySelector("#photoDialogImage");
+      image.src = medicine.photo;
+      image.alt = `${medicine.name}の写真`;
+      document.querySelector("#photoDialog").showModal();
+    });
     elements.medicineMasterList.append(item);
   });
 }
@@ -466,8 +476,94 @@ function openMedicineEdit(id) {
   editingMedicineId = id;
   elements.medicineEditNameInput.value = medicine.name;
   elements.medicineEditTimingInput.value = medicine.timing;
+  editPhoto.set(medicine.photo || "");
   elements.medicineEditDialog.showModal();
 }
+
+function validMedicinePhoto(value) {
+  return typeof value === "string" && value.length <= 32000
+    && /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(value);
+}
+
+async function prepareMedicinePhoto(file) {
+  if (!file.type.startsWith("image/") || file.size > 20 * 1024 * 1024) {
+    throw new Error("20MB以下の画像を選んでください");
+  }
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  try {
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("この写真を読み込めません。JPEGまたはPNGの写真を選んでください"));
+      image.src = url;
+    });
+    // Keep the entire package visible, and bound the sync-log cell size.
+    const canvas = document.createElement("canvas");
+    for (let size = 640; size >= 160; size = Math.floor(size * 0.75)) {
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, size, size);
+      const scale = Math.min(size / image.naturalWidth, size / image.naturalHeight);
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+      for (const quality of [0.85, 0.7, 0.55]) {
+        const photo = canvas.toDataURL("image/jpeg", quality);
+        if (photo.length <= 32000) return photo;
+      }
+    }
+    throw new Error("写真を小さくできませんでした。別の写真を選んでください");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function photoField(selector, form) {
+  const field = document.querySelector(selector);
+  const input = field.querySelector("input");
+  const preview = field.querySelector("img");
+  const remove = field.querySelector(".photo-remove");
+  const message = field.querySelector(".photo-message");
+  const submit = form.querySelector('[type="submit"]');
+  let value = "";
+  let sequence = 0;
+  let busy = false;
+  function set(photo) {
+    sequence += 1;
+    busy = false;
+    submit.disabled = false;
+    value = validMedicinePhoto(photo) ? photo : "";
+    input.value = "";
+    preview.hidden = !value;
+    remove.hidden = !value;
+    if (value) preview.src = value; else preview.removeAttribute("src");
+    message.textContent = "";
+  }
+  input.addEventListener("change", async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const selection = ++sequence;
+    busy = true;
+    submit.disabled = true;
+    message.textContent = "写真を準備しています";
+    try {
+      const photo = await prepareMedicinePhoto(file);
+      if (selection === sequence) set(photo);
+    } catch (error) {
+      if (selection === sequence) message.textContent = error.message;
+    } finally {
+      if (selection === sequence) { busy = false; submit.disabled = false; }
+    }
+  });
+  remove.addEventListener("click", () => set(""));
+  return { set, get: () => value, isBusy: () => busy };
+}
+
+const addPhoto = photoField("#medicinePhotoField", elements.medicineForm);
+const editPhoto = photoField("#medicineEditPhotoField", elements.medicineEditForm);
+document.querySelector("#closePhotoButton").addEventListener("click", () => document.querySelector("#photoDialog").close());
 
 elements.nowButton.addEventListener("click", () => {
   setCurrentDateTime(elements.dateInput);
@@ -508,6 +604,7 @@ elements.asNeededSaveButton.addEventListener("click", async () => {
 
 elements.medicineForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (addPhoto.isBusy()) return;
   await databaseReady;
   const name = elements.medicineNameInput.value.trim();
   if (!name) return elements.medicineNameInput.focus();
@@ -515,6 +612,7 @@ elements.medicineForm.addEventListener("submit", async (event) => {
   await MedicationDB.saveLocalChange("medicine", {
     id: crypto.randomUUID(),
     name,
+    photo: addPhoto.get(),
     timing: elements.medicineTimingInput.value,
     sortOrder: medicines.reduce((max, item) => Math.max(max, Number(item.sortOrder || 0)), 0) + 1,
     createdAt: now,
@@ -523,6 +621,7 @@ elements.medicineForm.addEventListener("submit", async (event) => {
     version: 0,
   }, "upsert");
   elements.medicineForm.reset();
+  addPhoto.set("");
   await refreshLocalData();
   syncNow();
 });
@@ -555,12 +654,14 @@ elements.deleteRecordButton.addEventListener("click", async () => {
 
 elements.medicineEditForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (editPhoto.isBusy()) return;
   const current = await MedicationDB.get(MedicationDB.STORES.medicines, editingMedicineId);
   const name = elements.medicineEditNameInput.value.trim();
   if (!current || !name) return;
   await MedicationDB.saveLocalChange("medicine", {
     ...current,
     name,
+    photo: editPhoto.get(),
     timing: elements.medicineEditTimingInput.value,
     updatedAt: Date.now(),
   }, "upsert");

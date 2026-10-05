@@ -131,6 +131,15 @@
                 <option value="必要時">必要時</option>
               </select>
             </label>
+            <div class="photo-field" id="medicinePhotoField">
+              <span class="label">薬の写真（任意）</span>
+              <div class="photo-controls">
+                <img class="photo-preview" alt="選択した薬の写真" hidden>
+                <label class="small-button photo-picker">写真を選ぶ<input type="file" accept="image/*"></label>
+                <button class="text-button photo-remove" type="button" hidden>写真を削除</button>
+              </div>
+              <p class="form-message photo-message" aria-live="polite"></p>
+            </div>
             <button class="save-button compact" type="submit">薬を追加する</button>
           </form>
         </section>
@@ -215,11 +224,24 @@
             <option value="必要時">必要時</option>
           </select>
         </label>
+        <div class="photo-field" id="medicineEditPhotoField">
+          <span class="label">薬の写真（任意）</span>
+          <div class="photo-controls">
+            <img class="photo-preview" alt="選択した薬の写真" hidden>
+            <label class="small-button photo-picker">写真を選ぶ<input type="file" accept="image/*"></label>
+            <button class="text-button photo-remove" type="button" hidden>写真を削除</button>
+          </div>
+          <p class="form-message photo-message" aria-live="polite"></p>
+        </div>
         <button class="save-button compact" type="submit">変更を保存</button>
         <button class="disconnect-button" id="deleteMedicineButton" type="button">この薬を使用終了</button>
       </form>
     </dialog>
 
+    <dialog class="connection-dialog photo-dialog" id="photoDialog">
+      <div class="dialog-title-row"><h2 id="photoDialogTitle">薬の写真</h2><button class="icon-button" id="closePhotoButton" type="button" aria-label="写真を閉じる">×</button></div>
+      <img id="photoDialogImage" alt="">
+    </dialog>
     <script src="indexed-db.js"></script>
     <script src="script.js"></script>
   </body>

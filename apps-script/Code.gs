@@ -90,7 +90,7 @@ function bootstrap_(requestedRecordIdsValue, includeAll) {
       })
       .map(function (row) {
         var state = syncStates[entityKey_("medicine", row[0])] || {};
-        return medicineFromRow_(row, state.version || 0, state.deletedAt || null);
+        return medicineFromRow_(row, state.version || 0, state.deletedAt || null, state.entity && state.entity.photo || "");
       })
       .sort(function (a, b) { return a.sortOrder - b.sortOrder; });
   }
@@ -229,9 +229,13 @@ function normalizeRecordEntity_(entity, version, updatedAt, deletedAt) {
 function normalizeMedicineEntity_(entity, version, updatedAt, deletedAt) {
   var name = String(entity.name || "").trim();
   if (!name || name.length > 100) throw new Error("薬名を正しく入力してください");
+  var previous = latestSyncState_("medicine", entity.id);
+  var photo = entity.photo === undefined ? (previous && previous.entity && previous.entity.photo || "") : entity.photo;
+  photo = validateMedicinePhoto_(photo);
   return {
     id: validateId_(entity.id, "薬ID"),
     name: name,
+    photo: photo,
     timing: validatePeriod_(entity.timing),
     sortOrder: Math.max(0, Number(entity.sortOrder) || 0),
     createdAt: Number(entity.createdAt) || updatedAt,
@@ -316,10 +320,15 @@ function recordFromRow_(row, version, deletedAt) {
   };
 }
 
-function medicineFromRow_(row, version, deletedAt) {
+function medicineFromRow_(row, version, deletedAt, photo) {
+  if (photo === undefined) {
+    var state = latestSyncState_("medicine", String(row[0]));
+    photo = state && state.entity && state.entity.photo || "";
+  }
   return {
     id: String(row[0]),
     name: String(row[1]),
+    photo: photo || "",
     timing: String(row[2]),
     sortOrder: Number(row[4]) || 0,
     createdAt: dateTime_(row[5]) || Date.now(),
@@ -327,6 +336,15 @@ function medicineFromRow_(row, version, deletedAt) {
     deletedAt: deletedAt || (row[3] === false ? (dateTime_(row[6]) || Date.now()) : null),
     version: Number(version) || 0
   };
+}
+
+function validateMedicinePhoto_(value) {
+  if (!value) return "";
+  if (typeof value !== "string" || value.length > 32000
+    || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(value)) {
+    throw new Error("薬の写真が正しくありません");
+  }
+  return value;
 }
 
 function latestDate_(first, second) {

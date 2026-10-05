@@ -245,6 +245,7 @@
     return {
       id: String(medicine.id),
       name: String(medicine.name),
+      photo: String(medicine.photo || ""),
       timing: String(medicine.timing),
       sortOrder: Number(medicine.sortOrder || 0),
       createdAt,

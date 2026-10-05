@@ -1,4 +1,4 @@
-const CACHE_NAME = "medication-manager-v7";
+const CACHE_NAME = "medication-manager-v8";
 const APP_ASSETS = [
   "./",
   "./index.html",
